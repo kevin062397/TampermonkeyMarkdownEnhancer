@@ -48,7 +48,7 @@
         const beforeSelection = value.slice(0, start);
 
         const selectionStartLine = beforeSelection.lastIndexOf("\n") + 1;
-        const selectionEndLine = end;
+        const selectionEndLine = value.indexOf("\n", end) >= 0 ? value.indexOf("\n", end) : value.length; // The end index is exclusive, so it's before the next line break or before the end of text
 
         const selectedLines = value.slice(selectionStartLine, selectionEndLine).split("\n");
 
@@ -82,6 +82,45 @@
         textArea.selectionEnd = start + spacesToInsert;
     };
 
+    const outdentSelectedLines = (textArea: HTMLTextAreaElement, tabSize: number) => {
+        const start = textArea.selectionStart;
+        const end = textArea.selectionEnd;
+        const value = textArea.value;
+
+        // Find line starts for selection
+        const beforeSelection = value.slice(0, start);
+        const selectionStartLine = beforeSelection.lastIndexOf("\n") + 1;
+        const selectionEndLine = value.indexOf("\n", end) >= 0 ? value.indexOf("\n", end) : value.length; // The end index is exclusive, so it's before the next line break or before the end of text
+
+        const selectedLines = value.slice(selectionStartLine, selectionEndLine).split("\n");
+
+        // Remove up to tabSize spaces from each selected line
+        const outdentedLines = selectedLines.map((line) =>
+            line.startsWith(" ".repeat(tabSize)) ? line.slice(tabSize) : line.replace(/^ +/, "")
+        );
+
+        const newText = outdentedLines.join("\n");
+
+        // Calculate how many spaces were actually removed
+        let removedChars = 0;
+        let removedCharsFirstLine = 0;
+        selectedLines.forEach((line, i) => {
+            const original = line;
+            const outdented = outdentedLines[i];
+            removedChars += original.length - outdented.length;
+            if (i === 0) {
+                removedCharsFirstLine = original.length - outdented.length;
+            }
+        });
+
+        // Replace the selected lines with outdented ones
+        textArea.setRangeText(newText, selectionStartLine, selectionEndLine, "end");
+
+        // Update selection to cover the newly outdented lines
+        textArea.selectionStart = Math.max(start - removedCharsFirstLine, selectionStartLine); // Ensure selection doesn't go before the start of the line
+        textArea.selectionEnd = Math.max(end - removedChars, selectionStartLine); // Ensure selection doesn't go before the start of the line
+    };
+
     const handleKeydown = (event: KeyboardEvent): void => {
         const textArea = event.target as HTMLTextAreaElement;
 
@@ -93,7 +132,7 @@
         }
 
         // Handle Tab for indentation
-        if (event.key === "Tab") {
+        if (event.key === "Tab" && !event.shiftKey) {
             event.preventDefault();
             const { selectionStart, selectionEnd } = textArea;
             if (selectionStart !== selectionEnd) {
@@ -103,6 +142,12 @@
                 // If no text is selected, insert spaces
                 insertSpaces(textArea, TAB_SIZE);
             }
+        }
+
+        // Handle Shift+Tab for outdentation
+        if (event.key === "Tab" && event.shiftKey) {
+            event.preventDefault();
+            outdentSelectedLines(textArea, TAB_SIZE);
         }
     };
 
