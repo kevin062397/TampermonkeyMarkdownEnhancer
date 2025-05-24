@@ -13,14 +13,17 @@
 (() => {
     const selectors = ["textarea"].join(", ");
 
-    const PAIRS: Record<string, [string, string]> = {
-        '"': ['"', '"'],
-        "'": ["'", "'"],
-        "(": ["(", ")"],
-        "[": ["[", "]"],
-        "{": ["{", "}"],
-        "<": ["<", ">"],
-        "`": ["`", "`"]
+    const WRAP_CHARACTERS: Record<string, { leading: string; trailing: string; isSelectionRequired: boolean }> = {
+        "(": { leading: "(", trailing: ")", isSelectionRequired: false },
+        "[": { leading: "[", trailing: "]", isSelectionRequired: false },
+        "{": { leading: "{", trailing: "}", isSelectionRequired: false },
+        "<": { leading: "<", trailing: ">", isSelectionRequired: false },
+        '"': { leading: '"', trailing: '"', isSelectionRequired: true },
+        "'": { leading: "'", trailing: "'", isSelectionRequired: true },
+        "`": { leading: "`", trailing: "`", isSelectionRequired: true },
+        _: { leading: "_", trailing: "_", isSelectionRequired: true },
+        "*": { leading: "*", trailing: "*", isSelectionRequired: true },
+        "~": { leading: "~", trailing: "~", isSelectionRequired: true }
     };
 
     const TAB_SIZE = 4;
@@ -124,18 +127,25 @@
     const handleKeydown = (event: KeyboardEvent): void => {
         const textArea = event.target as HTMLTextAreaElement;
 
+        const { selectionStart, selectionEnd } = textArea;
+        const hasSelection = selectionStart !== selectionEnd;
+
         // Handle wrapping characters
-        if (event.key in PAIRS) {
-            event.preventDefault();
-            const [leading, trailing] = PAIRS[event.key];
-            wrapSelectedText(textArea, leading, trailing);
+        if (event.key in WRAP_CHARACTERS) {
+            const { leading, trailing, isSelectionRequired } = WRAP_CHARACTERS[event.key];
+
+            if (hasSelection || !isSelectionRequired) {
+                // If text is selected or wrapping is allowed without selection
+                event.preventDefault();
+                wrapSelectedText(textArea, leading, trailing);
+            }
         }
 
         // Handle Tab for indentation
         if (event.key === "Tab" && !event.shiftKey) {
             event.preventDefault();
-            const { selectionStart, selectionEnd } = textArea;
-            if (selectionStart !== selectionEnd) {
+
+            if (hasSelection) {
                 // If text is selected, indent the selected lines
                 indentSelectedLines(textArea, TAB_SIZE);
             } else {
