@@ -23,27 +23,63 @@
         "`": ["`", "`"]
     };
 
-    const wrapSelectedText = (textarea: HTMLTextAreaElement, leading: string, trailing: string): void => {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = textarea.value.slice(start, end);
+    const TAB_SIZE = 4;
+
+    const wrapSelectedText = (textArea: HTMLTextAreaElement, leading: string, trailing: string): void => {
+        const start = textArea.selectionStart;
+        const end = textArea.selectionEnd;
+        const selectedText = textArea.value.slice(start, end);
 
         // Replace selection with wrapped text
         const newText = leading + selectedText + trailing;
-        textarea.setRangeText(newText, start, end, "end");
+        textArea.setRangeText(newText, start, end, "end");
 
         // Reselect the original content (without wrapping chars)
-        textarea.selectionStart = start + 1;
-        textarea.selectionEnd = start + 1 + selectedText.length;
+        textArea.selectionStart = start + 1;
+        textArea.selectionEnd = start + 1 + selectedText.length;
+    };
+
+    const indentSelectedLines = (textArea: HTMLTextAreaElement, tabSize: number) => {
+        const start = textArea.selectionStart;
+        const end = textArea.selectionEnd;
+        const value = textArea.value;
+
+        // Find line starts for selection
+        const beforeSelection = value.slice(0, start);
+
+        const selectionStartLine = beforeSelection.lastIndexOf("\n") + 1;
+        const selectionEndLine = end;
+
+        const selectedLines = value.slice(selectionStartLine, selectionEndLine).split("\n");
+
+        // Add spaces to each selected line
+        const indentedLines = selectedLines.map((line) => " ".repeat(tabSize) + line);
+
+        const newText = indentedLines.join("\n");
+
+        // Replace the selected lines with indented ones
+        textArea.setRangeText(newText, selectionStartLine, selectionEndLine, "end");
+
+        // Update selection to cover the newly indented lines
+        const addedChars = tabSize * selectedLines.length;
+        textArea.selectionStart = start + tabSize;
+        textArea.selectionEnd = end + addedChars;
     };
 
     const handleKeydown = (event: KeyboardEvent): void => {
-        const textarea = event.target as HTMLTextAreaElement;
+        const textArea = event.target as HTMLTextAreaElement;
 
+        // Handle wrapping characters
         if (event.key in PAIRS) {
             event.preventDefault();
             const [leading, trailing] = PAIRS[event.key];
-            wrapSelectedText(textarea, leading, trailing);
+            wrapSelectedText(textArea, leading, trailing);
+        }
+
+        // Handle Tab for indentation
+        if (event.key === "Tab") {
+            event.preventDefault();
+            indentSelectedLines(textArea, TAB_SIZE);
         }
     };
 
