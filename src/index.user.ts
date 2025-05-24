@@ -66,6 +66,22 @@
         textArea.selectionEnd = end + addedChars;
     };
 
+    const insertSpaces = (textArea: HTMLTextAreaElement, tabSize: number): void => {
+        const start = textArea.selectionStart;
+        const end = textArea.selectionEnd;
+        const value = textArea.value;
+
+        // Find the current line and calculate the number of spaces to insert
+        const currentLine = value.slice(0, start).split("\n").pop() || "";
+        const spacesToInsert = tabSize - (currentLine.length % tabSize); // Calculate the number of spaces to reach the next multiple of tab size
+        const spaces = " ".repeat(spacesToInsert);
+
+        // Insert spaces at the cursor position
+        textArea.setRangeText(spaces, start, end, "end");
+        textArea.selectionStart = start + spacesToInsert;
+        textArea.selectionEnd = start + spacesToInsert;
+    };
+
     const handleKeydown = (event: KeyboardEvent): void => {
         const textArea = event.target as HTMLTextAreaElement;
 
@@ -79,7 +95,14 @@
         // Handle Tab for indentation
         if (event.key === "Tab") {
             event.preventDefault();
-            indentSelectedLines(textArea, TAB_SIZE);
+            const { selectionStart, selectionEnd } = textArea;
+            if (selectionStart !== selectionEnd) {
+                // If text is selected, indent the selected lines
+                indentSelectedLines(textArea, TAB_SIZE);
+            } else {
+                // If no text is selected, insert spaces
+                insertSpaces(textArea, TAB_SIZE);
+            }
         }
     };
 
