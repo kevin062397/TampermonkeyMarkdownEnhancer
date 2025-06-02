@@ -28,6 +28,11 @@
 
     const TAB_SIZE = 4;
 
+    // Helper to check if a string is a hyperlink (http/https/ftp/mailto)
+    const isHyperlink = (text: string): boolean => {
+        return /^(https?:\/\/|ftp:\/\/|mailto:)[^\s]+$/i.test(text.trim());
+    };
+
     const wrapSelectedText = (textArea: HTMLTextAreaElement, leading: string, trailing: string): void => {
         const start = textArea.selectionStart;
         const end = textArea.selectionEnd;
@@ -161,11 +166,39 @@
         }
     };
 
+    const handlePaste = (event: ClipboardEvent): void => {
+        const textArea = event.target as HTMLTextAreaElement;
+
+        // Only handle if there is a selection and clipboard has text
+        if (!event.clipboardData) {
+            return;
+        }
+
+        const pasteText = event.clipboardData.getData("text");
+
+        const { selectionStart, selectionEnd } = textArea;
+        const hasSelection = selectionStart !== selectionEnd;
+
+        if (hasSelection && isHyperlink(pasteText)) {
+            // If text is selected and clipboard content is a hyperlink
+            event.preventDefault();
+            const selectedText = textArea.value.slice(selectionStart, selectionEnd);
+            const markdownLink = `[${selectedText}](${pasteText.trim()})`;
+            textArea.setRangeText(markdownLink, selectionStart, selectionEnd, "end");
+            // Place cursor after the inserted link
+            const newCursor = selectionStart + markdownLink.length;
+            textArea.selectionStart = newCursor;
+            textArea.selectionEnd = newCursor;
+        }
+        // Otherwise, allow default paste
+    };
+
     const attachListener = (textArea: HTMLTextAreaElement): void => {
         if (textArea.dataset.markdownEnhancerAttached === "true") {
             return;
         }
         textArea.addEventListener("keydown", handleKeydown);
+        textArea.addEventListener("paste", handlePaste);
         textArea.dataset.markdownEnhancerAttached = "true";
     };
 
