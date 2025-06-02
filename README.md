@@ -13,6 +13,9 @@
     - Press `Shift+Tab` to outdent the current line or all selected lines by up to 4 spaces.
 - **Smart Spaces:**
     - Pressing `Tab` with no selection inserts spaces to the next tab stop (multiple of 4 spaces).
+- **Paste hyperlinks as Markdown links:**
+    - If there is selected text and a hyperlink (e.g., `https://example.com`) is pasted, the selected text will be wrapped in Markdown link syntax: `[selected text](https://example.com)`.
+    - If the clipboard content is not a hyperlink or there is no selection, the default paste behavior is used.
 
 ## Installation
 
@@ -37,6 +40,8 @@
     - Select lines and press `Shift+Tab`.
 - **Insert spaces:**
     - Place the cursor and press `Tab` (with no selection).
+- **Paste hyperlinks as Markdown links:**
+    - Select text and paste a hyperlink.
 
 ## Development
 
