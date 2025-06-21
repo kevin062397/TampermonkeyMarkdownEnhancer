@@ -1,6 +1,6 @@
 # TampermonkeyMarkdownEnhancer
 
-**TampermonkeyMarkdownEnhancer** is a user script that enhances the Markdown editing experience in all `<textarea>` elements on any website. It provides keyboard shortcuts for wrapping text, indenting/outdenting lines, and inserting spaces, making Markdown editing faster and more convenient.
+**TampermonkeyMarkdownEnhancer** is a user script that enhances the Markdown editing experience in all `<textarea>` elements on any website. It provides keyboard shortcuts for wrapping text, toggling bold/italic, indenting/outdenting lines, and inserting spaces, making Markdown editing faster and more convenient.
 
 ## Features
 
@@ -8,6 +8,9 @@
     - Select text and press any of the following keys to wrap the selection:
         - For `"`, `'`, `` ` ``, `_`, `*`, `~`, a selection is required.
         - For `(`, `[`, `{`, `<`, wrapping can occur without a selection.
+- **Toggle Bold/Italic:**
+    - **Bold:** Select text and press <kbd>Cmd+B</kbd> (macOS) or <kbd>Ctrl+B</kbd> (Windows/Linux) to toggle `**bold**` formatting.
+    - **Italic:** Select text and press <kbd>Cmd+I</kbd> (macOS) or <kbd>Ctrl+I</kbd> (Windows/Linux) to toggle `*italic*` formatting.
 - **Indentation with Tab:**
     - Press `Tab` to indent the current line or all selected lines by 4 spaces (configurable in code).
     - Press `Shift+Tab` to outdent the current line or all selected lines by up to 4 spaces.
@@ -34,6 +37,10 @@
 
 - **Wrap text:**
     - Select text and press a wrapping key (see above).
+- **Toggle bold:**
+    - Select text and press <kbd>Cmd+B</kbd> (macOS) or <kbd>Ctrl+B</kbd> (Windows/Linux).
+- **Toggle italic:**
+    - Select text and press <kbd>Cmd+I</kbd> (macOS) or <kbd>Ctrl+I</kbd> (Windows/Linux).
 - **Indent:**
     - Select lines and press `Tab`.
 - **Outdent:**
