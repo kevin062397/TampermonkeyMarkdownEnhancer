@@ -47,7 +47,7 @@
         textArea.selectionEnd = start + 1 + selectedText.length;
     };
 
-    const indentSelectedLines = (textArea: HTMLTextAreaElement, tabSize: number) => {
+    const indentSelectedLines = (textArea: HTMLTextAreaElement, tabSize: number): void => {
         const start = textArea.selectionStart;
         const end = textArea.selectionEnd;
         const value = textArea.value;
@@ -90,7 +90,7 @@
         textArea.selectionEnd = start + spacesToInsert;
     };
 
-    const outdentSelectedLines = (textArea: HTMLTextAreaElement, tabSize: number) => {
+    const outdentSelectedLines = (textArea: HTMLTextAreaElement, tabSize: number): void => {
         const start = textArea.selectionStart;
         const end = textArea.selectionEnd;
         const value = textArea.value;
@@ -129,11 +129,79 @@
         textArea.selectionEnd = Math.max(end - removedChars, selectionStartLine); // Ensure selection doesn't go before the start of the line
     };
 
+    const toggleWrap = (textArea: HTMLTextAreaElement, wrap: string): void => {
+        const start = textArea.selectionStart;
+        const end = textArea.selectionEnd;
+        const value = textArea.value;
+        const wrapLen = wrap.length;
+        // Check if already wrapped (selection or text before/after selection)
+        const before = value.slice(start - wrapLen, start);
+        const after = value.slice(end, end + wrapLen);
+        const selectedText = value.slice(start, end);
+        if (before === wrap && after === wrap) {
+            // Remove wrapping from outside selection
+            textArea.setSelectionRange(start - wrapLen, end + wrapLen);
+            textArea.setRangeText(selectedText, start - wrapLen, end + wrapLen, "end");
+            textArea.selectionStart = start - wrapLen;
+            textArea.selectionEnd = start - wrapLen + selectedText.length;
+        } else if (selectedText.startsWith(wrap) && selectedText.endsWith(wrap) && selectedText.length >= wrapLen * 2) {
+            // Remove wrapping from inside selection
+            const unwrapped = selectedText.slice(wrapLen, -wrapLen);
+            textArea.setRangeText(unwrapped, start, end, "end");
+            textArea.selectionStart = start;
+            textArea.selectionEnd = start + unwrapped.length;
+        } else {
+            // Add wrapping
+            const wrapped = wrap + selectedText + wrap;
+            textArea.setRangeText(wrapped, start, end, "end");
+            textArea.selectionStart = start + wrapLen;
+            textArea.selectionEnd = start + wrapLen + selectedText.length;
+        }
+    };
+
+    // Detect OS for modifier key
+    const getOSModifierKey = (): "ctrl" | "meta" => {
+        const platform = navigator.platform.toLowerCase();
+        if (platform.includes("mac")) {
+            // Command for macOS
+            return "meta";
+        }
+        if (platform.includes("win")) {
+            // Control for Windows
+            return "ctrl";
+        }
+        // For Linux and others, use Control
+        return "ctrl";
+    };
+
+    const osModifierKey = getOSModifierKey();
+
     const handleKeydown = (event: KeyboardEvent): void => {
         const textArea = event.target as HTMLTextAreaElement;
 
         const { selectionStart, selectionEnd } = textArea;
         const hasSelection = selectionStart !== selectionEnd;
+
+        // OS-specific modifier logic
+        const isModifierKey =
+            (osModifierKey === "meta" && event.metaKey && !event.ctrlKey) ||
+            (osModifierKey === "ctrl" && event.ctrlKey && !event.metaKey);
+        // Toggle bold
+        if (isModifierKey && event.key.toLowerCase() === "b") {
+            event.preventDefault();
+            if (hasSelection) {
+                toggleWrap(textArea, "**");
+            }
+            return;
+        }
+        // Toggle italic
+        if (isModifierKey && event.key.toLowerCase() === "i") {
+            event.preventDefault();
+            if (hasSelection) {
+                toggleWrap(textArea, "*");
+            }
+            return;
+        }
 
         // Handle wrapping characters
         if (event.key in WRAP_CHARACTERS) {
