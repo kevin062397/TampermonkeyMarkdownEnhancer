@@ -237,7 +237,7 @@
     const handlePaste = (event: ClipboardEvent): void => {
         const textArea = event.target as HTMLTextAreaElement;
 
-        // Only handle if there is a selection and clipboard has text
+        // Only handle if clipboard has text
         if (!event.clipboardData) {
             return;
         }
