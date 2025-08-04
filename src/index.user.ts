@@ -129,34 +129,146 @@
         textArea.selectionEnd = Math.max(end - removedChars, selectionStartLine); // Ensure selection doesn't go before the start of the line
     };
 
-    const toggleWrap = (textArea: HTMLTextAreaElement, wrap: string): void => {
-        const start = textArea.selectionStart;
-        const end = textArea.selectionEnd;
-        const value = textArea.value;
+    // Helper function to apply text replacement and set selection
+    const applyWrapChange = (
+        textArea: HTMLTextAreaElement,
+        newStart: number,
+        newEnd: number,
+        oldStart: number,
+        oldEnd: number,
+        newText: string
+    ): void => {
+        textArea.setSelectionRange(oldStart, oldEnd);
+        textArea.setRangeText(newText, oldStart, oldEnd, "end");
+        textArea.selectionStart = newStart;
+        textArea.selectionEnd = newEnd;
+    };
+
+    // Helper function to check if text is wrapped with specific pattern
+    const isWrappedWith = (value: string, start: number, end: number, pattern: string): boolean => {
+        const before = value.slice(start - pattern.length, start);
+        const after = value.slice(end, end + pattern.length);
+        return before === pattern && after === pattern;
+    };
+
+    // Handle markdown asterisk formatting
+    const handleMarkdownToggle = (
+        textArea: HTMLTextAreaElement,
+        start: number,
+        end: number,
+        value: string,
+        selectedText: string,
+        wrap: string
+    ): boolean => {
+        // Check for triple asterisk case (***bold italic***)
+        if (isWrappedWith(value, start, end, "***")) {
+            const newWrap = wrap === "*" ? "**" : "*"; // Remove italic -> keep bold, Remove bold -> keep italic
+            const newText = newWrap + selectedText + newWrap;
+            const selectionOffset = wrap === "*" ? -1 : -2;
+            const newStart = start + selectionOffset;
+            const newEnd = newStart + selectedText.length;
+            applyWrapChange(textArea, newStart, newEnd, start - 3, end + 3, newText);
+            return true;
+        }
+
+        // Check for exact wrapping with target wrap
+        if (isWrappedWith(value, start, end, wrap)) {
+            // For single asterisk, make sure it's not part of double asterisks
+            if (wrap === "*") {
+                const beforeExtended = value.slice(start - 2, start);
+                const afterExtended = value.slice(end, end + 2);
+                if (beforeExtended === "**" || afterExtended === "**") {
+                    return false; // Let it fall through to conversion logic
+                }
+            }
+            // Remove the wrapping
+            const newStart = start - wrap.length;
+            const newEnd = newStart + selectedText.length;
+            applyWrapChange(textArea, newStart, newEnd, start - wrap.length, end + wrap.length, selectedText);
+            return true;
+        }
+
+        // Handle cross-format conversion (bold ↔ italic)
+        const otherWrap = wrap === "*" ? "**" : "*";
+        if (isWrappedWith(value, start, end, otherWrap)) {
+            // Convert to bold+italic
+            const newText = "***" + selectedText + "***";
+            // Calculate new selection position based on the replacement
+            // Original text is at position (start - otherWrap.length), new text starts with "***"
+            const replacementStart = start - otherWrap.length;
+            const newStart = replacementStart + 3; // Position after "***"
+            const newEnd = newStart + selectedText.length;
+            applyWrapChange(textArea, newStart, newEnd, start - otherWrap.length, end + otherWrap.length, newText);
+            return true;
+        }
+
+        // Check if selection itself is wrapped
+        if (selectedText.startsWith(wrap) && selectedText.endsWith(wrap) && selectedText.length >= wrap.length * 2) {
+            const unwrapped = selectedText.slice(wrap.length, -wrap.length);
+            textArea.setRangeText(unwrapped, start, end, "end");
+            textArea.selectionStart = start;
+            textArea.selectionEnd = start + unwrapped.length;
+            return true;
+        }
+
+        return false; // No special handling applied
+    };
+
+    // Handle non-markdown wrapping (parentheses, quotes, etc.)
+    const handleGenericToggle = (
+        textArea: HTMLTextAreaElement,
+        start: number,
+        end: number,
+        value: string,
+        selectedText: string,
+        wrap: string
+    ): boolean => {
         const wrapLen = wrap.length;
-        // Check if already wrapped (selection or text before/after selection)
-        const before = value.slice(start - wrapLen, start);
-        const after = value.slice(end, end + wrapLen);
-        const selectedText = value.slice(start, end);
-        if (before === wrap && after === wrap) {
+
+        if (isWrappedWith(value, start, end, wrap)) {
             // Remove wrapping from outside selection
-            textArea.setSelectionRange(start - wrapLen, end + wrapLen);
-            textArea.setRangeText(selectedText, start - wrapLen, end + wrapLen, "end");
-            textArea.selectionStart = start - wrapLen;
-            textArea.selectionEnd = start - wrapLen + selectedText.length;
-        } else if (selectedText.startsWith(wrap) && selectedText.endsWith(wrap) && selectedText.length >= wrapLen * 2) {
+            const newStart = start - wrapLen;
+            const newEnd = newStart + selectedText.length;
+            applyWrapChange(textArea, newStart, newEnd, start - wrapLen, end + wrapLen, selectedText);
+            return true;
+        }
+
+        if (selectedText.startsWith(wrap) && selectedText.endsWith(wrap) && selectedText.length >= wrapLen * 2) {
             // Remove wrapping from inside selection
             const unwrapped = selectedText.slice(wrapLen, -wrapLen);
             textArea.setRangeText(unwrapped, start, end, "end");
             textArea.selectionStart = start;
             textArea.selectionEnd = start + unwrapped.length;
-        } else {
-            // Add wrapping
-            const wrapped = wrap + selectedText + wrap;
-            textArea.setRangeText(wrapped, start, end, "end");
-            textArea.selectionStart = start + wrapLen;
-            textArea.selectionEnd = start + wrapLen + selectedText.length;
+            return true;
         }
+
+        return false; // No special handling applied
+    };
+
+    const toggleWrap = (textArea: HTMLTextAreaElement, wrap: string): void => {
+        const start = textArea.selectionStart;
+        const end = textArea.selectionEnd;
+        const value = textArea.value;
+        const wrapLen = wrap.length;
+        const selectedText = value.slice(start, end);
+
+        // Try markdown-specific handling for asterisks
+        if (wrap === "*" || wrap === "**") {
+            if (handleMarkdownToggle(textArea, start, end, value, selectedText, wrap)) {
+                return;
+            }
+        } else {
+            // Try generic wrapping handling for other characters
+            if (handleGenericToggle(textArea, start, end, value, selectedText, wrap)) {
+                return;
+            }
+        }
+
+        // If no special handling was applied, add wrapping
+        const wrapped = wrap + selectedText + wrap;
+        textArea.setRangeText(wrapped, start, end, "end");
+        textArea.selectionStart = start + wrapLen;
+        textArea.selectionEnd = start + wrapLen + selectedText.length;
     };
 
     // Detect OS for modifier key
