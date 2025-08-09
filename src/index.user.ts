@@ -33,6 +33,19 @@
         return /^(https?:\/\/|ftp:\/\/|mailto:)[^\s]+$/i.test(text.trim());
     };
 
+    // Helper function to insert text while preserving undo history
+    const insertTextWithUndo = (textArea: HTMLTextAreaElement, text: string, start: number, end: number): void => {
+        textArea.focus();
+        textArea.setSelectionRange(start, end);
+
+        // Use execCommand for better undo support, fallback to setRangeText
+        if (document.execCommand) {
+            document.execCommand("insertText", false, text);
+        } else {
+            textArea.setRangeText(text, start, end, "select");
+        }
+    };
+
     const wrapSelectedText = (textArea: HTMLTextAreaElement, leading: string, trailing: string): void => {
         const start = textArea.selectionStart;
         const end = textArea.selectionEnd;
@@ -40,11 +53,11 @@
 
         // Replace selection with wrapped text
         const newText = leading + selectedText + trailing;
-        textArea.setRangeText(newText, start, end, "end");
+        insertTextWithUndo(textArea, newText, start, end);
 
         // Reselect the original content (without wrapping chars)
-        textArea.selectionStart = start + 1;
-        textArea.selectionEnd = start + 1 + selectedText.length;
+        textArea.selectionStart = start + leading.length;
+        textArea.selectionEnd = start + leading.length + selectedText.length;
     };
 
     const indentSelectedLines = (textArea: HTMLTextAreaElement, tabSize: number): void => {
@@ -66,7 +79,7 @@
         const newText = indentedLines.join("\n");
 
         // Replace the selected lines with indented ones
-        textArea.setRangeText(newText, selectionStartLine, selectionEndLine, "end");
+        insertTextWithUndo(textArea, newText, selectionStartLine, selectionEndLine);
 
         // Update selection to cover the newly indented lines
         const addedChars = tabSize * selectedLines.length;
@@ -85,7 +98,7 @@
         const spaces = " ".repeat(spacesToInsert);
 
         // Insert spaces at the cursor position
-        textArea.setRangeText(spaces, start, end, "end");
+        insertTextWithUndo(textArea, spaces, start, end);
         textArea.selectionStart = start + spacesToInsert;
         textArea.selectionEnd = start + spacesToInsert;
     };
@@ -122,7 +135,7 @@
         });
 
         // Replace the selected lines with outdented ones
-        textArea.setRangeText(newText, selectionStartLine, selectionEndLine, "end");
+        insertTextWithUndo(textArea, newText, selectionStartLine, selectionEndLine);
 
         // Update selection to cover the newly outdented lines
         textArea.selectionStart = Math.max(start - removedCharsFirstLine, selectionStartLine); // Ensure selection doesn't go before the start of the line
@@ -138,8 +151,7 @@
         oldEnd: number,
         newText: string
     ): void => {
-        textArea.setSelectionRange(oldStart, oldEnd);
-        textArea.setRangeText(newText, oldStart, oldEnd, "end");
+        insertTextWithUndo(textArea, newText, oldStart, oldEnd);
         textArea.selectionStart = newStart;
         textArea.selectionEnd = newEnd;
     };
@@ -205,7 +217,7 @@
         // Check if selection itself is wrapped
         if (selectedText.startsWith(wrap) && selectedText.endsWith(wrap) && selectedText.length >= wrap.length * 2) {
             const unwrapped = selectedText.slice(wrap.length, -wrap.length);
-            textArea.setRangeText(unwrapped, start, end, "end");
+            insertTextWithUndo(textArea, unwrapped, start, end);
             textArea.selectionStart = start;
             textArea.selectionEnd = start + unwrapped.length;
             return true;
@@ -236,7 +248,7 @@
         if (selectedText.startsWith(wrap) && selectedText.endsWith(wrap) && selectedText.length >= wrapLen * 2) {
             // Remove wrapping from inside selection
             const unwrapped = selectedText.slice(wrapLen, -wrapLen);
-            textArea.setRangeText(unwrapped, start, end, "end");
+            insertTextWithUndo(textArea, unwrapped, start, end);
             textArea.selectionStart = start;
             textArea.selectionEnd = start + unwrapped.length;
             return true;
@@ -266,7 +278,7 @@
 
         // If no special handling was applied, add wrapping
         const wrapped = wrap + selectedText + wrap;
-        textArea.setRangeText(wrapped, start, end, "end");
+        insertTextWithUndo(textArea, wrapped, start, end);
         textArea.selectionStart = start + wrapLen;
         textArea.selectionEnd = start + wrapLen + selectedText.length;
     };
@@ -364,7 +376,7 @@
             event.preventDefault();
             const selectedText = textArea.value.slice(selectionStart, selectionEnd);
             const markdownLink = `[${selectedText}](${pasteText.trim()})`;
-            textArea.setRangeText(markdownLink, selectionStart, selectionEnd, "end");
+            insertTextWithUndo(textArea, markdownLink, selectionStart, selectionEnd);
             // Place cursor after the inserted link
             const newCursor = selectionStart + markdownLink.length;
             textArea.selectionStart = newCursor;
